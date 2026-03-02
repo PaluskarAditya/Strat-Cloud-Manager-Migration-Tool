@@ -3,7 +3,7 @@ const app = express();
 const cookieParser = require("cookie-parser");
 const fs = require("fs");
 const multer = require("multer");
-const upload = multer({ dest: "./tmp/" });
+const upload = multer({ storage: multer.memoryStorage() });
 const { XMLParser } = require("fast-xml-parser");
 const {
   createSecurityRules,
@@ -103,8 +103,7 @@ app.post("/api/v1/import-backup", upload.single("backup"), async (req, res) => {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const filePath = req.file.path;
-  const backup = fs.readFileSync(filePath, "utf-8");
+  const backup = req.file.buffer.toString("utf-8");
 
   if (!backup) {
     return res.status(400).json({ error: "Missing backup data" });
