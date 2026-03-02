@@ -3,7 +3,7 @@ const app = express();
 const cookieParser = require("cookie-parser");
 const fs = require("fs");
 const multer = require("multer");
-const upload = multer({ dest: "uploads/" });
+const upload = multer({ dest: "./tmp/" });
 const { XMLParser } = require("fast-xml-parser");
 const {
   createSecurityRules,
