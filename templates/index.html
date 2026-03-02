@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SCM Migration · login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* force zero rounding – sharp, no curves */
+      * {
+        border-radius: 0 !important;
+      }
+
+      input,
+      button {
+        transition:
+          opacity 0.1s ease,
+          background-color 0.1s ease,
+          border-color 0.1s ease;
+      }
+      button:active {
+        opacity: 0.75;
+      }
+
+      /* sharp spinner */
+      .spinner-sharp {
+        display: inline-block;
+        width: 1rem;
+        height: 1rem;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top: 2px solid white;
+        animation: spin 0.7s linear infinite;
+        margin-right: 6px;
+        vertical-align: middle;
+        box-sizing: border-box;
+      }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* fade visibility */
+      .fade-hidden {
+        opacity: 0;
+        visibility: hidden;
+        transition:
+          opacity 0.12s ease,
+          visibility 0s 0.12s;
+      }
+      .fade-visible {
+        opacity: 1;
+        visibility: visible;
+        transition:
+          opacity 0.12s ease,
+          visibility 0s 0s;
+      }
+
+      /* blocky card */
+      .card-sharp {
+        background: white;
+        border: 2px solid black;
+        box-shadow: 6px 6px 0 #000;
+        padding: 1.5rem;
+        width: 100%;
+        max-width: 24rem;
+      }
+      .input-sharp {
+        border: 2px solid #000;
+        padding: 0.6rem 0.75rem;
+        font-size: 0.85rem;
+        width: 100%;
+        background: #fff;
+        outline: none;
+        box-shadow: none;
+      }
+      .input-sharp:focus {
+        border-color: #000;
+        background: #fafafa;
+      }
+      .btn-sharp {
+        border: 2px solid #000;
+        background: #fff;
+        padding: 0.6rem;
+        font-size: 0.85rem;
+        width: 100%;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        cursor: pointer;
+        transition:
+          background 0.1s,
+          border 0.1s;
+        text-align: center;
+        box-shadow: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+      }
+      .btn-sharp.primary {
+        background: #000;
+        color: #fff;
+        border: 2px solid #000;
+      }
+      .btn-sharp.primary:active {
+        background: #222;
+      }
+      .btn-sharp.secondary {
+        background: #fff;
+        color: #000;
+        border: 2px solid #000;
+      }
+      .btn-sharp.secondary:active {
+        background: #f0f0f0;
+      }
+
+      .status-line {
+        font-size: 0.7rem;
+        border-top: 2px solid #000;
+        padding-top: 0.5rem;
+        margin-top: 0.5rem;
+        min-height: 2rem;
+        color: #111;
+      }
+      body {
+        background: #dadada;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+      hr {
+        border: 1px solid #000;
+        margin: 0.75rem 0;
+      }
+
+      /* file input tweak */
+      .file-upload-sharp::file-selector-button {
+        border: 2px solid #000;
+        background: #fff;
+        padding: 0.3rem 0.6rem;
+        margin-right: 0.75rem;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        transition: background 0.1s;
+      }
+      .file-upload-sharp::file-selector-button:active {
+        background: #f0f0f0;
+      }
+    </style>
+  </head>
+  <body class="flex h-screen justify-center items-center bg-[#dadada]">
+    <div class="card-sharp">
+      <div class="flex items-center justify-between">
+        <h1 class="text-base font-bold uppercase tracking-wide">SCM login</h1>
+        <span class="text-[0.6rem] border-2 border-black px-2 py-0.5 bg-white"
+          >v2</span
+        >
+      </div>
+      <hr />
+
+      <!-- JSON upload & template section (only mechanism) -->
+      <div class="flex flex-col gap-4">
+        <div>
+          <label class="block text-[0.7rem] uppercase font-medium mb-1"
+            >login.json upload</label
+          >
+          <div class="flex gap-2">
+            <input
+              type="file"
+              id="jsonUpload"
+              accept=".json,application/json"
+              class="input-sharp file-upload-sharp text-[0.75rem] p-1.5"
+            />
+            <button
+              id="downloadTemplateBtn"
+              class="btn-sharp secondary text-[0.7rem] py-1 px-2 w-auto uppercase"
+              type="button"
+            >
+              template
+            </button>
+          </div>
+          <p id="fileHint" class="text-[0.6rem] text-gray-600 mt-1">
+            upload JSON with client_id, client_secret, tsg_id
+          </p>
+        </div>
+
+        <!-- login button (active only after valid file is loaded) -->
+        <button
+          id="loginBtn"
+          class="btn-sharp primary mt-2 fade-hidden"
+          disabled
+        >
+          <span id="btnText">Login</span>
+          <span id="loginSpinner" class="spinner-sharp fade-hidden"></span>
+        </button>
+
+        <!-- status area (no alert popups) -->
+        <div id="statusMsg" class="status-line">​</div>
+
+        <div class="flex items-center justify-centerw-full gap-2 mt-4">
+          <p class="text-[0.6rem] text-gray-600">
+            Made with passion by
+            <span class="font-medium text-black"
+              ><a href="https://github.com/PaluskarAditya" target="_blank"
+                >@aid3n</a
+              ></span
+            >
+          </p>
+          <img src="/images/pfp.png" class="h-[30px] w-[30px]" />
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        // DOM elements
+        const jsonUpload = document.getElementById("jsonUpload");
+        const downloadBtn = document.getElementById("downloadTemplateBtn");
+        const fileHint = document.getElementById("fileHint");
+        const loginBtn = document.getElementById("loginBtn");
+        const btnText = document.getElementById("btnText");
+        const loginSpinner = document.getElementById("loginSpinner");
+        const statusDiv = document.getElementById("statusMsg");
+
+        // store credentials extracted from file
+        let currentCredentials = null; // { id, secret, tsgId }
+
+        let isSubmitting = false;
+
+        // ---------- helper functions ----------
+        function setSubmitting(loading) {
+          isSubmitting = loading;
+          if (loading) {
+            loginSpinner.classList.remove("fade-hidden");
+            loginSpinner.classList.add("fade-visible");
+            btnText.innerText = "Logging in";
+            loginBtn.style.pointerEvents = "none";
+            loginBtn.style.opacity = "0.8";
+            jsonUpload.disabled = true;
+            downloadBtn.disabled = true;
+          } else {
+            loginSpinner.classList.remove("fade-visible");
+            loginSpinner.classList.add("fade-hidden");
+            btnText.innerText = "Login";
+            loginBtn.style.pointerEvents = "";
+            loginBtn.style.opacity = "";
+            jsonUpload.disabled = false;
+            downloadBtn.disabled = false;
+            // button enable/disable based on valid credentials
+            updateLoginButtonState();
+          }
+        }
+
+        function setStatus(message, isError = false) {
+          statusDiv.innerText = message || "​";
+          statusDiv.style.color = isError ? "#a00" : "#111";
+        }
+
+        function clearStatusAfter(delay = 3000) {
+          setTimeout(() => {
+            if (statusDiv.innerText && !isSubmitting) setStatus("");
+          }, delay);
+        }
+
+        // enable login button only if we have valid credentials
+        function updateLoginButtonState() {
+          if (currentCredentials && !isSubmitting) {
+            loginBtn.classList.remove("fade-hidden");
+            loginBtn.classList.add("fade-visible");
+            loginBtn.disabled = false;
+          } else {
+            loginBtn.classList.remove("fade-visible");
+            loginBtn.classList.add("fade-hidden");
+            loginBtn.disabled = true;
+          }
+        }
+
+        // ---------- download template JSON (exactly the structure from login.json) ----------
+        function downloadTemplate() {
+          const template = {
+            client_id: "aditya.paluskar@1770004231.iam.panserviceaccount.com",
+            client_secret: "aa329a67-a83b-40a7-87a2-e6d09a9f34fc",
+            tsg_id: "1770004231",
+          };
+          const blob = new Blob([JSON.stringify(template, null, 2)], {
+            type: "application/json",
+          });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "login.template.json";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          setStatus("📥 template downloaded");
+          clearStatusAfter(1500);
+        }
+
+        downloadBtn.addEventListener("click", downloadTemplate);
+
+        // ---------- handle JSON upload & extract credentials, then enable login ----------
+        jsonUpload.addEventListener("change", (e) => {
+          const file = e.target.files[0];
+          if (!file) {
+            currentCredentials = null;
+            updateLoginButtonState();
+            return;
+          }
+
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            try {
+              const json = JSON.parse(ev.target.result);
+              // validate expected fields
+              if (!json.client_id || !json.client_secret || !json.tsg_id) {
+                throw new Error(
+                  "Missing required fields: client_id, client_secret, tsg_id",
+                );
+              }
+              // store credentials
+              currentCredentials = {
+                id: json.client_id.trim(),
+                secret: json.client_secret.trim(),
+                tsgId: json.tsg_id.trim(),
+              };
+
+              setStatus("✅ JSON loaded — ready to login");
+              fileHint.innerText = "Loaded: " + file.name;
+              updateLoginButtonState();
+              clearStatusAfter(2000);
+            } catch (err) {
+              setStatus("❌ Invalid JSON: " + err.message, true);
+              fileHint.innerText = "upload a valid JSON file";
+              jsonUpload.value = ""; // reset
+              currentCredentials = null;
+              updateLoginButtonState();
+              clearStatusAfter(3000);
+            }
+          };
+          reader.readAsText(file);
+        });
+
+        // ---------- login submit handler (only file-based, no manual fields) ----------
+        loginBtn.addEventListener("click", async (e) => {
+          e.preventDefault();
+
+          if (!currentCredentials) {
+            setStatus("No valid credentials loaded", true);
+            clearStatusAfter(2000);
+            return;
+          }
+
+          const { id, secret, tsgId } = currentCredentials;
+
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+          setSubmitting(true);
+          setStatus("Authenticating...");
+
+          try {
+            const response = await fetch("/api/v1/login", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id, secret, tsgId }),
+              signal: controller.signal,
+              credentials: "include",
+            });
+
+            clearTimeout(timeoutId);
+
+            if (response.ok) {
+              setStatus("✅ Success, redirecting...");
+              setTimeout(() => {
+                window.location.href = "/scm/dashboard";
+              }, 200);
+            } else {
+              let errorMsg = "Authentication failed";
+              try {
+                const data = await response.json();
+                if (data && data._error && data._error.message)
+                  errorMsg = data._error.message;
+                else if (data.message) errorMsg = data.message;
+              } catch (_) {}
+              setStatus(`❌ ${errorMsg}`, true);
+              setSubmitting(false);
+              clearStatusAfter(4000);
+            }
+          } catch (err) {
+            clearTimeout(timeoutId);
+            if (err.name === "AbortError")
+              setStatus("⏱️ Request timed out (10s)", true);
+            else setStatus("⚠️ Network error. Check connection.", true);
+            console.error(err);
+            setSubmitting(false);
+            clearStatusAfter(4000);
+          }
+        });
+
+        // initial state: login button hidden
+        updateLoginButtonState();
+        setStatus("");
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SCM Migration - Backup Import</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body>
+    <div class="flex h-screen justify-center items-center bg-gray-100">
+      <div
+        class="bg-white shadow-xl max-w-sm shadow-gray-200 p-4 text-xs flex flex-col gap-2"
+      >
+        <h1 class="text-lg font-bold mb-4">Backup Import</h1>
+
+        <input type="file" id="backupFile" class="border p-2 mb-2" />
+
+        <!-- Device dropdown (hidden initially) -->
+        <select id="deviceSelect" class="border p-2 mb-2 hidden">
+          <option value="">Select Device</option>
+        </select>
+
+        <!-- Import button hidden initially -->
+        <button id="importBtn" class="bg-blue-500 text-white p-2 hidden">
+          Import Backup
+        </button>
+      </div>
+    </div>
+
+    <script type="module">
+      const fileInput = document.getElementById("backupFile");
+      const deviceSelect = document.getElementById("deviceSelect");
+      const importBtn = document.getElementById("importBtn");
+
+      let devicesCache = [];
+
+      // Step 1: When file selected → fetch devices
+      fileInput.addEventListener("change", async () => {
+        if (fileInput.files.length === 0) return;
+
+        try {
+          const response = await fetch("/api/v1/get-devices", {
+            method: "GET",
+            credentials: "include",
+          });
+
+          const data = await response.json();
+
+          if (!data || data.length === 0) {
+            alert("No devices available.");
+            return;
+          }
+
+          devicesCache = data;
+
+          // populate dropdown
+          deviceSelect.innerHTML = '<option value="">Select Device</option>';
+
+          data.forEach((device) => {
+            const option = document.createElement("option");
+            option.value = device.serial_number;
+            option.textContent = `${device.display_name} (${device.serial_number})`;
+            deviceSelect.appendChild(option);
+          });
+
+          deviceSelect.classList.remove("hidden");
+        } catch (err) {
+          console.error(err);
+          alert("Failed to fetch devices.");
+        }
+      });
+
+      // Step 2: show import button only after device selected
+      deviceSelect.addEventListener("change", () => {
+        if (deviceSelect.value) {
+          importBtn.classList.remove("hidden");
+        } else {
+          importBtn.classList.add("hidden");
+        }
+      });
+
+      // Step 3: Import backup
+      importBtn.addEventListener("click", async () => {
+        const file = fileInput.files[0];
+        const selectedDevice = deviceSelect.value;
+
+        if (!file || !selectedDevice) {
+          alert("Missing file or device.");
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append("backup", file);
+        formData.append("serial", selectedDevice);
+
+        try {
+          const response = await fetch("/api/v1/import-backup", {
+            method: "POST",
+            body: formData,
+            credentials: "include",
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            alert("Migration started");
+          } else {
+            alert("Import failed.");
+          }
+        } catch (err) {
+          console.error(err);
+          alert("Error during import.");
+        }
+      });
+    </script>
+  </body>
+</html>
